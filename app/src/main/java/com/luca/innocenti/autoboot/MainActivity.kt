@@ -29,6 +29,10 @@ import java.util.*
 
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
+    private var azimuth_mean: Float = 0.0f
+    private var pitch_mean: Float = 0.0f
+    private var roll_mean: Float = 0.0f
+    private var max_itera: Int = 20000
     private var batteryperc: Int = 0
     private var azimuth: Float= 0.0f
     private var pitch: Float= 0.0f
@@ -44,6 +48,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+
 
         val intentFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         this.registerReceiver(batteria, intentFilter)
@@ -80,17 +86,27 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             azimuth = event.values[0]
             pitch = event.values[1]
             roll = event.values[2]
-            if (conteggio > 20000) {
+
+            azimuth_mean = azimuth_mean + azimuth
+            pitch_mean = pitch_mean + pitch
+            roll_mean = roll_mean + roll
+
+            if (conteggio > max_itera) {
 
                 conteggio = 0
                 //val queue = Volley.newRequestQueue(this)
 
                 val currentDate = SimpleDateFormat("yyyy/MM/dd_HH:mm:ss", Locale.getDefault()).format(Date())
 
+                pitch_mean = pitch_mean/max_itera
+                roll_mean = roll_mean/max_itera
+                azimuth_mean = azimuth_mean/max_itera
 
-                val url = "http://192.168.1.102/index.php?tempo="+currentDate+"&pitch="+pitch.toString()+"&roll="+roll.toString()+"&azimuth="+azimuth.toString()+"&batteria="+batteryperc.toString()
+                val url = "http://192.168.1.102/index.php?tempo="+currentDate+"&pitch="+pitch_mean.toString()+"&roll="+roll_mean.toString()+"&azimuth="+azimuth_mean.toString()+"&batteria="+batteryperc.toString()
 
-
+                pitch_mean = 0.0f
+                roll_mean = 0.0f
+                azimuth_mean = 0.0f
 
                 val httpAsync = url
                     .httpGet()
