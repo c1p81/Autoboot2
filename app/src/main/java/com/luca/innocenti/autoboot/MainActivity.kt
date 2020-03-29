@@ -135,6 +135,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 }
             }
         httpAsync.join()
+        Log.d("allarme","Allarme "+currentDate)
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -151,14 +152,23 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 Math.sqrt(((y * y) + (z * z)).toDouble())
             )) * (180.0 / Math.PI)
 
+
+
+            // calcola il valore medio
+            //azimuth_mean = azimuth_mean + azimuth
+            pitch_mean = (pitch_mean + pitch_ista).toFloat()
+            roll_mean = (roll_mean + roll_ista).toFloat()
+            //Log.d("Posizione",(pitch_mean/conteggio).toString()+";"+(roll_mean/conteggio).toString())
+
+
             // ALLARME
-            if ((Math.abs(pitch_ista-pitch_mean_old) > 1) && (controllo == 0))
+            if ((Math.abs(pitch_ista-pitch_mean_old) > 1) && (controllo == 0) && (Math.abs(pitch_mean_old) > 0.0f))
             {
                 allarme = 1
                 controllo = 1
                 crea_allarme(1)
             }
-            if ((Math.abs(roll_ista-roll_mean_old) > 1) && (controllo == 0))
+            if ((Math.abs(roll_ista-roll_mean_old) > 1) && (controllo == 0) && (Math.abs(pitch_mean_old) > 0.0f))
             {
                 controllo = 1
                 allarme = 2
@@ -167,12 +177,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
             // ********************* FINE ALLARME ***************
 
-            // calcola il valore medio
-            //azimuth_mean = azimuth_mean + azimuth
-            pitch_mean = (pitch_mean + pitch_ista).toFloat()
-            roll_mean = (roll_mean + roll_ista).toFloat()
-
-            Log.d("Posizione",(pitch_mean/conteggio).toString()+";"+(roll_mean/conteggio).toString())
 
             if (conteggio == max_itera) {
                 conteggio = 0
@@ -189,7 +193,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
 
                 pitch_mean_old = pitch_mean
-                roll_mean_old = pitch_mean
+                roll_mean_old = roll_mean
                 //azimuth_mean_old = pitch_mean
                 pitch_mean = 0.0f
                 roll_mean = 0.0f
