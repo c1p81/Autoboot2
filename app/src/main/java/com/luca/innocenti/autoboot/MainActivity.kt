@@ -25,6 +25,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_BOOT_COMPLETED
 import android.content.IntentFilter
+import android.graphics.Typeface
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -34,6 +35,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.PowerManager
 import android.util.Log
+import android.util.TypedValue
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.android.volley.DefaultRetryPolicy
@@ -64,6 +66,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var z: Float = 0.0f
     private var conteggio: Int = 0
     private var allarme: Int = 0
+    private var controllo: Int = 0
     private var id_staz: String = "2"  // identificativo della stazione di misura
     private var base_url: String = "http://150.217.73.108/autoboot/"  //url del webserver
 
@@ -79,6 +82,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         val testo: TextView = findViewById(R.id.testo) as TextView
         testo.setText(id_staz)
+        testo.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40f)
+        testo.setTypeface(null, Typeface.BOLD);
+
 
         // Gestore dello stato della batteria
         val intentFilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
@@ -111,6 +117,26 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
     }
 
+    fun crea_allarme(tipo: Int){
+        val currentDate = SimpleDateFormat("yyyy/MM/dd_HH:mm:ss", Locale.getDefault()).format(Date())
+        val url = base_url+"index.php?allarme="+allarme.toString()+"&tempo="+currentDate
+        val httpAsync = url
+            .httpGet()
+            .responseString { request, response, result ->
+                when (result) {
+                    is Result.Failure -> {
+                        val ex = result.getException()
+                        println(ex)
+                    }
+                    is Result.Success -> {
+                        val data = result.get()
+                        println(data)
+                    }
+                }
+            }
+        httpAsync.join()
+    }
+
     override fun onSensorChanged(event: SensorEvent?) {
         if (event != null) {
             conteggio = conteggio + 1
@@ -126,13 +152,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             )) * (180.0 / Math.PI)
 
             // ALLARME
-            if ((Math.abs(pitch_ista-pitch_mean_old) > 1) )
+            if ((Math.abs(pitch_ista-pitch_mean_old) > 1) && (controllo == 0))
             {
                 allarme = 1
+                controllo = 1
+                crea_allarme(1)
             }
-            if ((Math.abs(roll_ista-roll_mean_old) > 1) )
+            if ((Math.abs(roll_ista-roll_mean_old) > 1) && (controllo == 0))
             {
+                controllo = 1
                 allarme = 2
+                crea_allarme(2)
             }
 
             // ********************* FINE ALLARME ***************
@@ -146,6 +176,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
             if (conteggio == max_itera) {
                 conteggio = 0
+                controllo = 0
 
                 val currentDate = SimpleDateFormat("yyyy/MM/dd_HH:mm:ss", Locale.getDefault()).format(Date())
 
