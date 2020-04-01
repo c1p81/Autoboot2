@@ -58,9 +58,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var pitch_mean_old: Float = 0.0f
     private var roll_mean_old: Float = 0.0f
 
-    private var max_itera: Int = 20000 // il dato viene inviato al server quando e' cumulato
+    private var max_itera: Int = 10000 // il dato viene inviato al server quando e' cumulato
                                        // questo numero di misure
     private var batteryperc: Int = 0
+    private var batterytemp: Int = 0
+    private var batterytempf: Float = 0.0f
     private var x: Float= 0.0f
     private var y: Float= 0.0f
     private var z: Float = 0.0f
@@ -110,7 +112,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private val batteria = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
              batteryperc = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL,0)!!
-            Log.d("batteria",batteryperc.toString())
+             batterytemp = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE,0)!!
+             batterytempf = (batterytemp/10.0).toFloat()
+
+
+            
+            Log.d("batteria",batteryperc.toString()+" "+ batterytempf.toString())
         }
     }
 
@@ -188,7 +195,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 roll_mean = roll_mean/max_itera
                 //azimuth_mean = azimuth_mean/max_itera
 
-                val url = base_url+"index.php?tempo="+currentDate+"&pitch="+"%.2f".format(pitch_mean).toString()+"&roll="+"%.2f".format(roll_mean).toString()+"&batteria="+batteryperc.toString()+"&id_staz="+id_staz+"&allarme="+allarme.toString()
+                val url = base_url+"index.php?tempo="+currentDate+"&pitch="+"%.2f".format(pitch_mean).toString()+"&roll="+"%.2f".format(roll_mean).toString()+"&batteria="+batteryperc.toString()+"&id_staz="+id_staz+"&allarme="+allarme.toString()+"&temp="+batterytempf.toString()+"&cicli="+max_itera.toString()
                 //val url = base_url+"/index.php?tempo="+currentDate+"&pitch="+pitch_mean.toString()+"&roll="+roll_mean.toString()+"&azimuth="+azimuth_mean.toString()+"&batteria="+batteryperc.toString()+"&id_staz="+id_staz
 
 
@@ -212,6 +219,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                             is Result.Success -> {
                                 val data = result.get()
                                 println(data)
+
+                                Log.d("risposta",data)
+                                try {
+                                    max_itera = data.toInt()
+                                }
+                                catch (nfe: NumberFormatException)
+                                {
+                                    max_itera = 10000
+                                }
                             }
                         }
                     }
