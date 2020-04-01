@@ -116,7 +116,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
              batterytempf = (batterytemp/10.0).toFloat()
 
 
-            
+
             Log.d("batteria",batteryperc.toString()+" "+ batterytempf.toString())
         }
     }
