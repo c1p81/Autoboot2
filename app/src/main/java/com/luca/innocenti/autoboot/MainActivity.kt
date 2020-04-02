@@ -38,31 +38,28 @@ import android.util.Log
 import android.util.TypedValue
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.android.volley.DefaultRetryPolicy
-import com.android.volley.Request
-import com.android.volley.Response
-import com.android.volley.RetryPolicy
-import com.android.volley.toolbox.StringRequest
-import com.android.volley.toolbox.Volley
-import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.httpGet
 import com.github.kittinunf.result.Result
+import com.google.gson.Gson
 import java.text.SimpleDateFormat
 import java.util.*
 
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
+
     private var azimuth_mean: Float = 0.0f
     private var pitch_mean: Float = 0.0f
     private var roll_mean: Float = 0.0f
     private var pitch_mean_old: Float = 0.0f
     private var roll_mean_old: Float = 0.0f
+    private var soglia: Float = 30.0f
 
-    private var max_itera: Int = 10000 // il dato viene inviato al server quando e' cumulato
+    private var max_itera: Int = 3000 // il dato viene inviato al server quando e' cumulato
                                        // questo numero di misure
     private var batteryperc: Int = 0
     private var batterytemp: Int = 0
-    private var batterytempf: Float = 0.0f
+    private var pressione: Int = 0
+    private var batterytempf: Double = 0.0
     private var x: Float= 0.0f
     private var y: Float= 0.0f
     private var z: Float = 0.0f
@@ -76,7 +73,23 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private var mSensorManager : SensorManager ?= null
     private var mAccelerometer : Sensor ?= null
+    private var mBarometer: Sensor ?=null
 
+
+    class imposta(
+        var cicli:Int = 0,
+        var soglia:Float = 0.0f) {
+                fun Get_cicli():Int {
+                    return cicli
+                }
+
+                fun Get_soglia():Float {
+                    return soglia
+                }
+                override fun toString(): String {
+                    return "${this.cicli}, ${this.soglia}"
+                }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,6 +109,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         // Gestore accelerometro
         mSensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         mAccelerometer = mSensorManager!!.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        mBarometer = mSensorManager!!.getDefaultSensor(Sensor.TYPE_PRESSURE)
         //--------------------------
 
         // Wake Lock
@@ -112,8 +126,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private val batteria = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
              batteryperc = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL,0)!!
-             batterytemp = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE,0)!!
-             batterytempf = (batterytemp/10.0).toFloat()
+             batterytemp = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE,-1)!!
+             batterytempf = batterytemp/10.0
 
 
 
@@ -147,95 +161,110 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event != null) {
-            conteggio = conteggio + 1
-            x = event.values[0]
-            y = event.values[1]
-            z = event.values[2]
+            if (event.sensor.type == Sensor.TYPE_ACCELEROMETER)
+                    {
+                    conteggio = conteggio + 1
+                    x = event.values[0]
+                    y = event.values[1]
+                    z = event.values[2]
 
-            // valori istantanei di pitch e roll
-            var pitch_ista = (Math.atan2(y.toDouble(), z.toDouble())) * (180.0 / Math.PI)
-            var roll_ista = (Math.atan2(
-                (-x).toDouble(),
-                Math.sqrt(((y * y) + (z * z)).toDouble())
-            )) * (180.0 / Math.PI)
-
-
-
-            // calcola il valore medio
-            //azimuth_mean = azimuth_mean + azimuth
-            pitch_mean = (pitch_mean + pitch_ista).toFloat()
-            roll_mean = (roll_mean + roll_ista).toFloat()
-            //Log.d("Posizione",(pitch_mean/conteggio).toString()+";"+(roll_mean/conteggio).toString())
+                    // valori istantanei di pitch e roll
+                    var pitch_ista = (Math.atan2(y.toDouble(), z.toDouble())) * (180.0 / Math.PI)
+                    var roll_ista = (Math.atan2(
+                        (-x).toDouble(),
+                        Math.sqrt(((y * y) + (z * z)).toDouble())
+                    )) * (180.0 / Math.PI)
 
 
-            // ALLARME
-            if ((Math.abs(pitch_ista-pitch_mean_old) > 1) && (controllo == 0) && (Math.abs(pitch_mean_old) > 0.0f))
-            {
-                allarme = 1
-                controllo = 1
-                crea_allarme(1)
-            }
-            if ((Math.abs(roll_ista-roll_mean_old) > 1) && (controllo == 0) && (Math.abs(pitch_mean_old) > 0.0f))
-            {
-                controllo = 1
-                allarme = 2
-                crea_allarme(2)
-            }
 
-            // ********************* FINE ALLARME ***************
+                    // calcola il valore medio degli angoli di posizione
+                    //azimuth_mean = azimuth_mean + azimuth
+                    pitch_mean = (pitch_mean + pitch_ista).toFloat()
+                    roll_mean = (roll_mean + roll_ista).toFloat()
+                    //Log.d("Posizione",(pitch_mean/conteggio).toString()+";"+(roll_mean/conteggio).toString())
 
 
-            if (conteggio == max_itera) {
-                conteggio = 0
-                controllo = 0
-
-                val currentDate = SimpleDateFormat("yyyy/MM/dd_HH:mm:ss", Locale.getDefault()).format(Date())
-
-                pitch_mean = pitch_mean/max_itera
-                roll_mean = roll_mean/max_itera
-                //azimuth_mean = azimuth_mean/max_itera
-
-                val url = base_url+"index.php?tempo="+currentDate+"&pitch="+"%.2f".format(pitch_mean).toString()+"&roll="+"%.2f".format(roll_mean).toString()+"&batteria="+batteryperc.toString()+"&id_staz="+id_staz+"&allarme="+allarme.toString()+"&temp="+batterytempf.toString()+"&cicli="+max_itera.toString()
-                //val url = base_url+"/index.php?tempo="+currentDate+"&pitch="+pitch_mean.toString()+"&roll="+roll_mean.toString()+"&azimuth="+azimuth_mean.toString()+"&batteria="+batteryperc.toString()+"&id_staz="+id_staz
-
-
-                pitch_mean_old = pitch_mean
-                roll_mean_old = roll_mean
-                //azimuth_mean_old = pitch_mean
-                pitch_mean = 0.0f
-                roll_mean = 0.0f
-                azimuth_mean = 0.0f
-                allarme = 0
-
-                // Invio al server in modalita' GET con la libreria FUEL
-                val httpAsync = url
-                    .httpGet()
-                    .responseString { request, response, result ->
-                        when (result) {
-                            is Result.Failure -> {
-                                val ex = result.getException()
-                                println(ex)
-                            }
-                            is Result.Success -> {
-                                val data = result.get()
-                                println(data)
-
-                                Log.d("risposta",data)
-                                try {
-                                    max_itera = data.toInt()
-                                }
-                                catch (nfe: NumberFormatException)
-                                {
-                                    max_itera = 10000
-                                }
-                            }
-                        }
+                    // ALLARME
+                    if ((Math.abs(pitch_ista-pitch_mean_old) > soglia) && (controllo == 0) && (Math.abs(pitch_mean_old) > 0.0f))
+                    {
+                        allarme = 1
+                        controllo = 1
+                        crea_allarme(1)
+                    }
+                    if ((Math.abs(roll_ista-roll_mean_old) > soglia) && (controllo == 0) && (Math.abs(pitch_mean_old) > 0.0f))
+                    {
+                        controllo = 1
+                        allarme = 2
+                        crea_allarme(2)
                     }
 
-                httpAsync.join()
-                //-------------------------------------
+                    // ********************* FINE ALLARME ***************
 
-                Log.d("Volley",url)
+
+                    if (conteggio == max_itera) {
+                        conteggio = 0
+                        controllo = 0
+
+                        val currentDate = SimpleDateFormat(
+                            "yyyy/MM/dd_HH:mm:ss",
+                            Locale.getDefault()
+                        ).format(Date())
+
+                        pitch_mean = pitch_mean / max_itera
+                        roll_mean = roll_mean / max_itera
+                        //azimuth_mean = azimuth_mean/max_itera
+
+                        val url =
+                            base_url + "index.php?tempo=" + currentDate + "&pitch=" + "%.2f".format(
+                                pitch_mean
+                            ).toString() + "&roll=" + "%.2f".format(roll_mean)
+                                .toString() + "&batteria=" + batteryperc.toString() + "&id_staz=" + id_staz + "&allarme=" + allarme.toString() + "&temp=" + batterytempf.toString() + "&cicli=" + max_itera.toString()+"&pressione="+pressione.toString()+"&soglia="+soglia.toString()
+
+
+                        pitch_mean_old = pitch_mean
+                        roll_mean_old = roll_mean
+                        //azimuth_mean_old = pitch_mean
+                        pitch_mean = 0.0f
+                        roll_mean = 0.0f
+                        azimuth_mean = 0.0f
+                        allarme = 0
+
+                        // Invio al server in modalita' GET con la libreria FUEL
+                        val httpAsync = url
+                            .httpGet()
+                            .responseString { request, response, result ->
+                                when (result) {
+                                    is Result.Failure -> {
+                                        val ex = result.getException()
+                                        println(ex)
+                                    }
+                                    is Result.Success -> {
+                                        // legge il file di configurazione JSON
+                                        // che arriva dal server
+                                        val data = result.get()
+                                        Log.d("risposta", data)
+                                        //val json = "{'cicli':26,'soglia': 1.5}"
+                                        var impostazioni = Gson().fromJson(data, imposta::class.java)
+                                        //var prova = impostazioni.Get_cicli()
+                                        //Log.d("imposta", impostazioni.toString())
+                                        //Log.d("imposta", prova.toString())
+                                        max_itera = impostazioni.Get_cicli()
+                                        soglia = impostazioni.Get_soglia()
+
+                                    }
+                                }
+                            }
+
+                        httpAsync.join()
+                        //-------------------------------------
+
+                        Log.d("Volley", url)
+                    }
+            }
+            if (event.sensor.type == Sensor.TYPE_PRESSURE)
+            {
+                pressione = event.values[0].toInt()
+                Log.d("pressione",pressione.toString())
             }
         }
     }
@@ -248,6 +277,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onResume() {
         super.onResume()
         mSensorManager!!.registerListener(this,mAccelerometer, SensorManager.SENSOR_DELAY_GAME)
+        mSensorManager!!.registerListener(this,mBarometer, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
 }
