@@ -25,6 +25,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_BOOT_COMPLETED
 import android.content.IntentFilter
+import android.graphics.Color
 import android.graphics.Typeface
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -36,6 +37,11 @@ import android.os.Handler
 import android.os.PowerManager
 import android.util.Log
 import android.util.TypedValue
+import android.view.Gravity
+import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.github.kittinunf.fuel.httpGet
@@ -43,7 +49,6 @@ import com.github.kittinunf.result.Result
 import com.google.gson.Gson
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.math.sign
 
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
@@ -53,9 +58,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var roll_mean: Float = 0.0f
     private var pitch_mean_old: Float = 0.0f
     private var roll_mean_old: Float = 0.0f
-    private var soglia: Float = 30.0f
+    private var soglia: Float = 2.0f
 
-    private var max_itera: Int = 3000 // il dato viene inviato al server quando e' cumulato
+    private var max_itera: Int = 10000 // il dato viene inviato al server quando e' cumulato
                                        // questo numero di misure
     private var batteryperc: Int = 0
     private var batterytemp: Int = 0
@@ -98,6 +103,33 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val nome = arrayOf("1", "2", "3", "4", "5", "6", "7", "8", "9","10")
+        val spinner = findViewById<Spinner>(R.id.spinner)
+        if (spinner != null) {
+            val spinnerArrayAdapter = ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, nome)
+
+            spinner.setAdapter(spinnerArrayAdapter);
+
+
+
+            spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: AdapterView<*>, view: View, position: Int, id: Long) {
+                    (parent.getChildAt(0) as TextView).setTextColor(Color.BLACK)
+                    (parent.getChildAt(0) as TextView).textSize = 45f
+                    (parent.getChildAt(0) as TextView).gravity = Gravity.CENTER
+                    (parent.getChildAt(0) as TextView).textAlignment= View.TEXT_ALIGNMENT_GRAVITY
+                    id_staz = nome[position]
+                    Log.d("nome", id_staz)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>) {
+                    // Code to perform some action when nothing is selected
+                }
+            }
+        }
+
+
 
         val testo: TextView = findViewById(R.id.testo) as TextView
         testo.setText(id_staz)
@@ -303,7 +335,6 @@ class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(c: Context, intent: Intent?) {
         val action = intent?.action
-        Log.d("ASD123123", "RECEIVED BOOT")
         val intent = Intent(c, MainActivity::class.java)
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
@@ -314,8 +345,6 @@ class BootReceiver : BroadcastReceiver() {
             ACTION_BOOT_COMPLETED -> startWork(c)
         }
     }
-
-
     private fun startWork(context: Context) {
         Log.d("Test", "Test")
 
