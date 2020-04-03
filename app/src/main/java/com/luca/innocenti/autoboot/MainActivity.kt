@@ -43,6 +43,7 @@ import com.github.kittinunf.result.Result
 import com.google.gson.Gson
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.sign
 
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
@@ -60,6 +61,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var batterytemp: Int = 0
     private var pressione: Int = 0
     private var batterytempf: Double = 0.0
+    private var temp_ambiente: Float = 0.0f
     private var x: Float= 0.0f
     private var y: Float= 0.0f
     private var z: Float = 0.0f
@@ -74,6 +76,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var mSensorManager : SensorManager ?= null
     private var mAccelerometer : Sensor ?= null
     private var mBarometer: Sensor ?=null
+    private var mAmbient: Sensor ?=null
+
 
 
     class imposta(
@@ -106,10 +110,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         this.registerReceiver(batteria, intentFilter)
         //-------------------------
 
-        // Gestore accelerometro
+        // Istanzia i sensori
         mSensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         mAccelerometer = mSensorManager!!.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         mBarometer = mSensorManager!!.getDefaultSensor(Sensor.TYPE_PRESSURE)
+        mAmbient = mSensorManager!!.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE)
+        if (mAmbient == null)
+        {
+            Log.d("ambiente","Nessun sensore di temperatura")
+        }
         //--------------------------
 
         // Wake Lock
@@ -156,7 +165,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 }
             }
         httpAsync.join()
-        Log.d("allarme","Allarme "+currentDate)
+        Log.d("test","Allarmato "+currentDate)
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -169,29 +178,29 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     z = event.values[2]
 
                     // valori istantanei di pitch e roll
-                    var pitch_ista = (Math.atan2(y.toDouble(), z.toDouble())) * (180.0 / Math.PI)
-                    var roll_ista = (Math.atan2(
-                        (-x).toDouble(),
-                        Math.sqrt(((y * y) + (z * z)).toDouble())
-                    )) * (180.0 / Math.PI)
+                    var pitch_ista = ((Math.atan2(y.toDouble(), z.toDouble())) * (180.0 / Math.PI)).toFloat()
+                    var roll_ista = ((Math.atan2((-x).toDouble(), Math.sqrt(((y * y) + (z * z)).toDouble()))) * (180.0 / Math.PI)).toFloat()
 
 
 
                     // calcola il valore medio degli angoli di posizione
                     //azimuth_mean = azimuth_mean + azimuth
-                    pitch_mean = (pitch_mean + pitch_ista).toFloat()
-                    roll_mean = (roll_mean + roll_ista).toFloat()
+                    pitch_mean = pitch_mean + pitch_ista
+                    roll_mean = roll_mean + roll_ista
                     //Log.d("Posizione",(pitch_mean/conteggio).toString()+";"+(roll_mean/conteggio).toString())
-
+                    var tr: Float = 0.0f
+                    var tp: Float = 0.0f
+                    tr = Math.abs(roll_mean_old-roll_ista)
+                    tp = Math.abs(pitch_mean_old-pitch_ista)
 
                     // ALLARME
-                    if ((Math.abs(pitch_ista-pitch_mean_old) > soglia) && (controllo == 0) && (Math.abs(pitch_mean_old) > 0.0f))
+                    if ((tp > soglia) && (controllo==0))
                     {
                         allarme = 1
                         controllo = 1
                         crea_allarme(1)
                     }
-                    if ((Math.abs(roll_ista-roll_mean_old) > soglia) && (controllo == 0) && (Math.abs(pitch_mean_old) > 0.0f))
+                    if ((tr > soglia) && (controllo==0))
                     {
                         controllo = 1
                         allarme = 2
@@ -218,7 +227,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                             base_url + "index.php?tempo=" + currentDate + "&pitch=" + "%.2f".format(
                                 pitch_mean
                             ).toString() + "&roll=" + "%.2f".format(roll_mean)
-                                .toString() + "&batteria=" + batteryperc.toString() + "&id_staz=" + id_staz + "&allarme=" + allarme.toString() + "&temp=" + batterytempf.toString() + "&cicli=" + max_itera.toString()+"&pressione="+pressione.toString()+"&soglia="+soglia.toString()
+                                .toString() + "&batteria=" + batteryperc.toString() + "&id_staz=" + id_staz + "&allarme=" + allarme.toString() + "&temp=" + temp_ambiente.toString() + "&cicli=" + max_itera.toString()+"&pressione="+pressione.toString()+"&soglia="+soglia.toString()
 
 
                         pitch_mean_old = pitch_mean
@@ -245,9 +254,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                                         Log.d("risposta", data)
                                         //val json = "{'cicli':26,'soglia': 1.5}"
                                         var impostazioni = Gson().fromJson(data, imposta::class.java)
-                                        //var prova = impostazioni.Get_cicli()
-                                        //Log.d("imposta", impostazioni.toString())
-                                        //Log.d("imposta", prova.toString())
                                         max_itera = impostazioni.Get_cicli()
                                         soglia = impostazioni.Get_soglia()
 
@@ -266,6 +272,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 pressione = event.values[0].toInt()
                 Log.d("pressione",pressione.toString())
             }
+            if (event.sensor.type == Sensor.TYPE_AMBIENT_TEMPERATURE)
+            {
+                temp_ambiente = event.values[0]
+                Log.d("ambiente",temp_ambiente.toString())
+            }
+
         }
     }
 
@@ -278,6 +290,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onResume()
         mSensorManager!!.registerListener(this,mAccelerometer, SensorManager.SENSOR_DELAY_GAME)
         mSensorManager!!.registerListener(this,mBarometer, SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager!!.registerListener(this,mAmbient, SensorManager.SENSOR_DELAY_FASTEST)
+
     }
 
 }
