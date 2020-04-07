@@ -1,22 +1,8 @@
 package com.luca.innocenti.autoboot
 /*
 Script in php per il lato server
-<?php
-$tempo = $_GET['tempo'];
-$pitch = $_GET['pitch'];
-$roll = $_GET['roll'];
-$azimuth = $_GET['azimuth'];
-$batteria = $_GET['batteria'];
-$id_staz = $_GET['id_staz'];
-$allarme = $_GET['allarme'];
 
-//print $pitch + ";" + $roll + ";" + $azimuth;
 
-$fp = fopen('sensore.txt', 'a');
-fwrite($fp, $tempo.";".$pitch.";".$roll.";".$azimuth.";".$batteria.";".$id_staz.";".$allarme.PHP_EOL);
-fclose($fp);
-
-?>
 */
 
 
