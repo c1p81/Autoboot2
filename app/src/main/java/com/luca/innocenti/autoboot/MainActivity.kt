@@ -35,10 +35,12 @@ import com.github.kittinunf.result.Result
 import com.google.gson.Gson
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.math.sqrt
 
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
+    private var luce: Float = 0.0f
     private var azimuth_mean: Float = 0.0f
     private var pitch_mean: Float = 0.0f
     private var roll_mean: Float = 0.0f
@@ -54,6 +56,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var batterytempf: Double = 0.0
     private var temp_ambiente: Float = 0.0f
     private var x: Float= 0.0f
+
+
     private var y: Float= 0.0f
     private var z: Float = 0.0f
     private var conteggio: Int = 0
@@ -68,6 +72,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var mAccelerometer : Sensor ?= null
     private var mBarometer: Sensor ?=null
     private var mAmbient: Sensor ?=null
+    private var mLight: Sensor ?=null
+    private var mLinear: Sensor ?=null
 
 
 
@@ -132,6 +138,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         mSensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         mAccelerometer = mSensorManager!!.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         mBarometer = mSensorManager!!.getDefaultSensor(Sensor.TYPE_PRESSURE)
+        mLight = mSensorManager!!.getDefaultSensor(Sensor.TYPE_LIGHT)
+        mLinear = mSensorManager!!.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+
+
         mAmbient = mSensorManager!!.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE)
         if (mAmbient == null)
         {
@@ -188,6 +198,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event != null) {
+            if (event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION)
+                     {
+                        val vettore = sqrt((event.values[0]*event.values[0])+(event.values[1]*event.values[1])+(event.values[2]*event.values[2]))
+                        if (vettore > soglia)
+                        {
+                            crea_allarme(1)
+                        }
+                         Log.d("lineare",vettore.toString())
+                    }
             if (event.sensor.type == Sensor.TYPE_ACCELEROMETER)
                     {
                     conteggio = conteggio + 1
@@ -212,6 +231,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     tp = Math.abs(pitch_mean_old-pitch_ista)
 
                     // ALLARME
+                        /*
                     if ((tp > soglia) && (controllo==0))
                     {
                         allarme = 1
@@ -224,7 +244,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                         allarme = 2
                         crea_allarme(2)
                     }
-
+                    */
                     // ********************* FINE ALLARME ***************
 
 
@@ -245,7 +265,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                             base_url + "index.php?tempo=" + currentDate + "&pitch=" + "%.2f".format(
                                 pitch_mean
                             ).toString() + "&roll=" + "%.2f".format(roll_mean)
-                                .toString() + "&batteria=" + batteryperc.toString() + "&id_staz=" + id_staz + "&allarme=" + allarme.toString() + "&temp=" + temp_ambiente.toString() + "&cicli=" + max_itera.toString()+"&pressione="+pressione.toString()+"&soglia="+soglia.toString()
+                                .toString() + "&batteria=" + batteryperc.toString() + "&id_staz=" + id_staz + "&allarme=" + allarme.toString() + "&temp=" + temp_ambiente.toString() + "&cicli=" + max_itera.toString()+"&pressione="+pressione.toString()+"&luce="+luce.toString()+"&soglia="+soglia.toString()
 
 
                         pitch_mean_old = pitch_mean
@@ -295,6 +315,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                 temp_ambiente = event.values[0]
                 Log.d("ambiente",temp_ambiente.toString())
             }
+            if (event.sensor.type == Sensor.TYPE_LIGHT)
+            {
+                luce = event.values[0]
+                Log.d("luce",luce.toString())
+            }
+
 
         }
     }
@@ -309,8 +335,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         mSensorManager!!.registerListener(this,mAccelerometer, SensorManager.SENSOR_DELAY_GAME)
         mSensorManager!!.registerListener(this,mBarometer, SensorManager.SENSOR_DELAY_NORMAL)
         mSensorManager!!.registerListener(this,mAmbient, SensorManager.SENSOR_DELAY_FASTEST)
+        mSensorManager!!.registerListener(this,mLight, SensorManager.SENSOR_DELAY_NORMAL)
+        mSensorManager!!.registerListener(this,mLinear, SensorManager.SENSOR_DELAY_FASTEST)
+
 
     }
+
 
 }
 
