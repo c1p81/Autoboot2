@@ -1,9 +1,4 @@
 package com.luca.innocenti.autoboot
-/*
-Script in php per il lato server
-
-
-*/
 
 
 import android.content.BroadcastReceiver
@@ -46,9 +41,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var roll_mean: Float = 0.0f
     private var pitch_mean_old: Float = 0.0f
     private var roll_mean_old: Float = 0.0f
-    private var soglia: Float = 2.0f
+    private var soglia: Float = 0.5f
 
-    private var max_itera: Int = 10000 // il dato viene inviato al server quando e' cumulato
+    private var max_itera: Int = 30000 // il dato viene inviato al server quando e' cumulato
                                        // questo numero di misure
     private var batteryperc: Int = 0
     private var batterytemp: Int = 0
@@ -112,7 +107,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     (parent.getChildAt(0) as TextView).gravity = Gravity.CENTER
                     (parent.getChildAt(0) as TextView).textAlignment= View.TEXT_ALIGNMENT_GRAVITY
                     id_staz = nome[position]
-                    Log.d("nome", id_staz)
+                    //Log.d("nome", id_staz)
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>) {
@@ -205,7 +200,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                         {
                             crea_allarme(1)
                         }
-                         Log.d("lineare",vettore.toString())
+                         //Log.d("lineare",vettore.toString())
                     }
             if (event.sensor.type == Sensor.TYPE_ACCELEROMETER)
                     {
@@ -308,17 +303,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             if (event.sensor.type == Sensor.TYPE_PRESSURE)
             {
                 pressione = event.values[0].toInt()
-                Log.d("pressione",pressione.toString())
+                //Log.d("pressione",pressione.toString())
             }
             if (event.sensor.type == Sensor.TYPE_AMBIENT_TEMPERATURE)
             {
                 temp_ambiente = event.values[0]
-                Log.d("ambiente",temp_ambiente.toString())
+                //Log.d("ambiente",temp_ambiente.toString())
             }
             if (event.sensor.type == Sensor.TYPE_LIGHT)
             {
                 luce = event.values[0]
-                Log.d("luce",luce.toString())
+                //Log.d("luce",luce.toString())
             }
 
 
