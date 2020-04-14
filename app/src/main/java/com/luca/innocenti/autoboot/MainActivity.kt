@@ -35,7 +35,8 @@ import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
-    private var luce: Float = 0.0f
+    private lateinit var sharedPreference: SharedPreference
+    private var luce: Int = 0
     private var azimuth_mean: Float = 0.0f
     private var pitch_mean: Float = 0.0f
     private var roll_mean: Float = 0.0f
@@ -91,6 +92,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        sharedPreference =SharedPreference(this)
+        id_staz = sharedPreference.getValueString("stazione").toString()
+        Log.d("nome",id_staz)
+
         val nome = arrayOf("1", "2", "3", "4", "5", "6", "7", "8", "9","10")
         val spinner = findViewById<Spinner>(R.id.spinner)
         if (spinner != null) {
@@ -107,7 +112,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
                     (parent.getChildAt(0) as TextView).gravity = Gravity.CENTER
                     (parent.getChildAt(0) as TextView).textAlignment= View.TEXT_ALIGNMENT_GRAVITY
                     id_staz = nome[position]
-                    //Log.d("nome", id_staz)
+                    sharedPreference.save("stazione",id_staz)
+                    Log.d("nome_select", id_staz)
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>) {
@@ -116,6 +122,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
         }
 
+        spinner.setSelection(id_staz.toInt()-1)
 
 
         val testo: TextView = findViewById(R.id.testo) as TextView
@@ -172,7 +179,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     fun crea_allarme(tipo: Int){
         val currentDate = SimpleDateFormat("yyyy/MM/dd_HH:mm:ss", Locale.getDefault()).format(Date())
-        val url = base_url+"index.php?allarme="+allarme.toString()+"&tempo="+currentDate
+        val url = base_url+"index.php?allarme="+tipo.toString()+"&tempo="+currentDate
         val httpAsync = url
             .httpGet()
             .responseString { request, response, result ->
@@ -312,7 +319,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
             if (event.sensor.type == Sensor.TYPE_LIGHT)
             {
-                luce = event.values[0]
+                luce = event.values[0].toInt()
                 //Log.d("luce",luce.toString())
             }
 
